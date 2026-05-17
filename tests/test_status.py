@@ -27,3 +27,10 @@ def test_health_endpoint_without_database_url_does_not_crash():
     payload = response.json()
     assert payload["success"] is True
     assert "database_details" in payload["data"]
+
+
+def test_protected_endpoint_requires_token():
+    response = client.get("/api/v1/auth/me")
+    assert response.status_code == 401
+    payload = response.json()
+    assert payload["success"] is False

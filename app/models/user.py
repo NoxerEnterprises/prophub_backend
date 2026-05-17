@@ -1,48 +1,62 @@
-import enum
+from __future__ import annotations
+
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum, String
+from sqlalchemy import Boolean, DateTime, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base
-from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
+from app.core.enums import UserRole
+from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.admin_profile import AdminProfile
     from app.models.agent_profile import AgentProfile
-
-
-class UserRole(str, enum.Enum):
-    USER = "USER"
-    AGENT = "AGENT"
-    ADMIN = "ADMIN"
-    SUPER_ADMIN = "SUPER_ADMIN"
+    from app.models.password_reset_token import PasswordResetToken
+    from app.models.refresh_token import RefreshToken
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "users"
-
-    email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
-    phone: Mapped[str | None] = mapped_column(String(50), unique=True, index=True, nullable=True)
-    full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, name="user_role", native_enum=False),
-        default=UserRole.USER,
-        nullable=False,
-        index=True,
+    __table_args__ = (
+        UniqueConstraint("email", name="uq_users_email"),
+        UniqueConstraint("phone", name="uq_users_phone"),
     )
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    agent_profile: Mapped["AgentProfile | None"] = relationship(
+    email: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
+    full_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(512), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), default=UserRole.USER.value, index=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    agent_profile: Mapped[AgentProfile | None] = relationship(
         "AgentProfile",
         back_populates="user",
         uselist=False,
+        lazy="selectin",
         cascade="all, delete-orphan",
+        foreign_keys="AgentProfile.user_id",
     )
-    admin_profile: Mapped["AdminProfile | None"] = relationship(
+    admin_profile: Mapped[AdminProfile | None] = relationship(
         "AdminProfile",
         back_populates="user",
         uselist=False,
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        foreign_keys="AdminProfile.user_id",
+    )
+    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
+        "RefreshToken",
+        back_populates="user",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    password_reset_tokens: Mapped[list[PasswordResetToken]] = relationship(
+        "PasswordResetToken",
+        back_populates="user",
+        lazy="selectin",
         cascade="all, delete-orphan",
     )

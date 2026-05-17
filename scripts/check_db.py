@@ -1,7 +1,12 @@
+import asyncio
+
 from app.db.session import check_database_connection
 
 
+async def main() -> None:
+    await check_database_connection()
+    print("Database connection successful.")
+
+
 if __name__ == "__main__":
-    result = check_database_connection()
-    print(result)
-    raise SystemExit(0 if result.get("ok") else 1)
+    asyncio.run(main())

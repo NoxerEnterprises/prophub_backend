@@ -1,75 +1,44 @@
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 
-_engine: Engine | None = None
-_SessionLocal: sessionmaker[Session] | None = None
+# asyncpg can conflict with Supabase/PgBouncer prepared statement caching.
+# statement_cache_size=0 keeps the connection safer across pooled deployments.
+connect_args = {"statement_cache_size": 0}
+
+async_engine = create_async_engine(
+    settings.async_database_url,
+    echo=settings.DEBUG,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    connect_args=connect_args,
+)
+
+AsyncSessionLocal = async_sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False,
+)
 
 
-def get_engine() -> Engine:
-    global _engine
-    if _engine is None:
-        database_url = settings.sqlalchemy_database_url
-        if not database_url:
-            raise RuntimeError("DATABASE_URL is not configured.")
-
-        _engine = create_engine(
-            database_url,
-            pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=10,
-            future=True,
-        )
-    return _engine
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
-def get_session_factory() -> sessionmaker[Session]:
-    global _SessionLocal
-    if _SessionLocal is None:
-        _SessionLocal = sessionmaker(
-            autocommit=False,
-            autoflush=False,
-            bind=get_engine(),
-            class_=Session,
-            expire_on_commit=False,
-        )
-    return _SessionLocal
-
-
-def get_db() -> Generator[Session, None, None]:
-    session_factory = get_session_factory()
-    db = session_factory()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def check_database_connection() -> dict:
-    if not settings.sqlalchemy_database_url:
-        return {
-            "ok": False,
-            "configured": False,
-            "message": "DATABASE_URL is not configured.",
-        }
-
-    try:
-        with get_engine().connect() as connection:
-            result = connection.execute(text("SELECT 1"))
-            scalar = result.scalar_one()
-        return {
-            "ok": scalar == 1,
-            "configured": True,
-            "message": "Database connection successful.",
-        }
-    except Exception as exc:
-        return {
-            "ok": False,
-            "configured": True,
-            "message": "Database connection failed.",
-            "error": str(exc),
-        }
+async def check_database_connection() -> bool:
+    async with async_engine.connect() as connection:
+        await connection.execute(text("SELECT 1"))
+    return True

@@ -1,22 +1,17 @@
 from fastapi import APIRouter
 
 from app.db.session import check_database_connection
-from app.schemas.response import success_response
+from app.schemas.common import APIResponse
 
-router = APIRouter()
+router = APIRouter(tags=["Health"])
 
 
-@router.get("/health")
-def health_check():
-    db_status = check_database_connection()
-    app_ok = True
-    db_ok = db_status.get("ok", False)
+@router.get("/health", response_model=APIResponse[dict])
+async def health_check() -> APIResponse[dict]:
+    return APIResponse(message="API is running", data={"status": "ok"})
 
-    return success_response(
-        message="Health check completed.",
-        data={
-            "app": "ok" if app_ok else "error",
-            "database": "ok" if db_ok else "not_configured_or_unavailable",
-            "database_details": db_status,
-        },
-    )
+
+@router.get("/status", response_model=APIResponse[dict])
+async def api_status() -> APIResponse[dict]:
+    database_ok = await check_database_connection()
+    return APIResponse(message="Service status", data={"api": "ok", "database": "ok" if database_ok else "down"})
