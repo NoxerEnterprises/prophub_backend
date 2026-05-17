@@ -9,4 +9,5 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-*_PASTE_CODE.md
+DAY5_COPY_PASTE_CODE.md
+DAY6_COPY_PASTE_CODE.md
