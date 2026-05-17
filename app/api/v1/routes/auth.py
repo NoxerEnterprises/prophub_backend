@@ -92,3 +92,5 @@ async def verify_password_reset(payload: PasswordResetVerifyRequest, session: Se
 async def reset_password(payload: PasswordResetConfirmRequest, session: SessionDep) -> APIResponse[dict]:
     await AuthService(session).reset_password(payload.reset_token, payload.otp_code, payload.new_password)
     return APIResponse(message="Password reset successful", data={"reset": True})
+
+
