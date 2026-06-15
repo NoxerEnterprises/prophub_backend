@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "0004_add_paystack_transactions_and_chat"
+revision = "0004_add_paystack_and_chat"
 down_revision = "0003_add_property_search_indexes"
 branch_labels = None
 depends_on = None
