@@ -30,6 +30,8 @@ class AdminAction(StrEnum):
     PROPERTY_HIDDEN = "PROPERTY_HIDDEN"
     PROPERTY_RESTORED = "PROPERTY_RESTORED"
     PROPERTY_ADMIN_DELETED = "PROPERTY_ADMIN_DELETED"
+    TRANSACTION_VERIFIED = "TRANSACTION_VERIFIED"
+    AGENT_MARKED_PAID = "AGENT_MARKED_PAID"
 
 
 class PropertyCategory(StrEnum):
@@ -77,3 +79,38 @@ class Environment(StrEnum):
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
+
+
+class TransactionProvider(StrEnum):
+    PAYSTACK = "PAYSTACK"
+
+
+class TransactionType(StrEnum):
+    AGENT_VERIFICATION = "AGENT_VERIFICATION"
+
+
+class TransactionStatus(StrEnum):
+    PENDING = "PENDING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    ABANDONED = "ABANDONED"
+    ONGOING = "ONGOING"
+    CANCELLED = "CANCELLED"
+
+
+class ChatType(StrEnum):
+    PRIVATE = "PRIVATE"
+    GROUP = "GROUP"
+
+
+class ChatParticipantRole(StrEnum):
+    OWNER = "OWNER"
+    ADMIN = "ADMIN"
+    MEMBER = "MEMBER"
+
+
+class MessageType(StrEnum):
+    TEXT = "TEXT"
+    IMAGE = "IMAGE"
+    VIDEO = "VIDEO"
+    SYSTEM = "SYSTEM"

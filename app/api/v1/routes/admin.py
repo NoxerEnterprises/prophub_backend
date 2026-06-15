@@ -7,15 +7,17 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import SessionDep, require_admin
-from app.core.enums import AgentStatus, ListingType, PropertyCategory, PropertySort, PropertyStatus
+from app.core.enums import AgentStatus, ListingType, PropertyCategory, PropertySort, PropertyStatus, TransactionStatus
 from app.models.user import User
 from app.repositories.admin_repository import AdminRepository
 from app.schemas.admin import AdminActivityLogResponse
 from app.schemas.agent import AgentAdminResponse, AgentApproveRequest, AgentStatusChangeRequest
 from app.schemas.common import APIResponse, PaginatedResponse, PaginationMeta
 from app.schemas.property import AdminPropertyRestoreRequest, AdminPropertyStatusRequest, PropertyResponse
+from app.schemas.payment import TransactionResponse
 from app.services.agent_service import AgentService
 from app.services.property_service import PropertyService
+from app.services.payment_service import PaymentService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -183,6 +185,24 @@ async def delete_admin_property(
 ) -> APIResponse[dict[str, bool]]:
     await PropertyService(session).soft_delete_property_for_admin(property_id=property_id, admin=admin, note=note)
     return APIResponse(message="Property deleted by admin", data={"deleted": True})
+
+
+@router.get("/transactions", response_model=APIResponse[PaginatedResponse[TransactionResponse]])
+async def list_admin_transactions(
+    session: SessionDep,
+    _admin: AdminDep,
+    status: TransactionStatus | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> APIResponse[PaginatedResponse[TransactionResponse]]:
+    transactions, total = await PaymentService(session).list_admin_transactions(page=page, limit=limit, status=status)
+    return APIResponse(
+        message="Admin transactions retrieved",
+        data=PaginatedResponse(
+            items=[TransactionResponse.model_validate(transaction) for transaction in transactions],
+            meta=PaginationMeta(page=page, limit=limit, total=total),
+        ),
+    )
 
 
 @router.get("/activity-logs", response_model=APIResponse[PaginatedResponse[AdminActivityLogResponse]])

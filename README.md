@@ -275,3 +275,47 @@ DELETE /api/v1/admin/properties/{property_id}?note=Fraudulent%20listing
 - Store secrets in Render/Supabase environment variables, not Git.
 - Do not expose the Supabase service role key to mobile or web apps.
 - Mobile and web clients must call FastAPI only. They should not write directly to Supabase tables.
+
+## Paystack + Chat Update
+
+This codebase now includes Paystack agent-verification payments and persistent chat with WebSocket support.
+
+Read the implementation guide:
+
+```txt
+docs/PAYSTACK_AND_CHAT_IMPLEMENTATION.md
+```
+
+New tables are added by migration:
+
+```bash
+alembic upgrade head
+```
+
+Required Paystack variables:
+
+```env
+PAYSTACK_PUBLIC_KEY=""
+PAYSTACK_SECRET_KEY=""
+PAYSTACK_WEBHOOK_SECRET=""
+PAYSTACK_CURRENCY="NGN"
+AGENT_VERIFICATION_FEE=10000
+PAYSTACK_CALLBACK_URL=""
+PAYSTACK_BASE_URL="https://api.paystack.co"
+```
+
+Required chat media variables:
+
+```env
+MAX_CHAT_IMAGE_SIZE_MB=5
+MAX_CHAT_VIDEO_SIZE_MB=50
+```
+
+New endpoint groups:
+
+```txt
+/api/v1/payments
+/api/v1/chats
+/api/v1/ws/chats/{chat_id}
+/api/v1/admin/transactions
+```
