@@ -8,6 +8,31 @@ class UserRole(StrEnum):
     SUPER_ADMIN = "SUPER_ADMIN"
 
 
+class UserType(StrEnum):
+    CUSTOMER = "CUSTOMER"
+    ADVERTISING_AGENT = "ADVERTISING_AGENT"
+    BUSINESS_AGENT = "BUSINESS_AGENT"
+    ARTISAN = "ARTISAN"
+    ADVERTISING = "ADVERTISING"
+    PROPERTY_DEVELOPMENT = "PROPERTY_DEVELOPMENT"
+    SURVEYOR = "SURVEYOR"
+    ARCHITECT = "ARCHITECT"
+    LEGAL_DRAFTS_MAN = "LEGAL_DRAFTS_MAN"
+    LANDLORD = "LANDLORD"
+
+
+class OperatingMode(StrEnum):
+    STANDALONE = "STANDALONE"
+    NOXER_MANAGED = "NOXER_MANAGED"
+
+
+class SubscriptionStatus(StrEnum):
+    INACTIVE = "INACTIVE"
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    CANCELLED = "CANCELLED"
+
+
 class AgentStatus(StrEnum):
     PENDING = "PENDING"
     PAID = "PAID"
@@ -16,12 +41,36 @@ class AgentStatus(StrEnum):
     DISABLED = "DISABLED"
 
 
+class DocumentType(StrEnum):
+    NIN = "NIN"
+    CAC = "CAC"
+    SCUM = "SCUM"
+
+
+class DocumentStatus(StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+class VisibleContactType(StrEnum):
+    AGENT = "AGENT"
+    NOXER = "NOXER"
+
+
 class AdminAction(StrEnum):
     AGENT_APPROVED = "AGENT_APPROVED"
     AGENT_REJECTED = "AGENT_REJECTED"
     AGENT_DISABLED = "AGENT_DISABLED"
     AGENT_ENABLED = "AGENT_ENABLED"
+    AGENT_PROFILE_CREATED = "AGENT_PROFILE_CREATED"
     ADMIN_CREATED = "ADMIN_CREATED"
+    ADMIN_UPDATED = "ADMIN_UPDATED"
+    ADMIN_DISABLED = "ADMIN_DISABLED"
+    ADMIN_ENABLED = "ADMIN_ENABLED"
+    DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED"
+    DOCUMENT_APPROVED = "DOCUMENT_APPROVED"
+    DOCUMENT_REJECTED = "DOCUMENT_REJECTED"
     PROPERTY_CREATED = "PROPERTY_CREATED"
     PROPERTY_UPDATED = "PROPERTY_UPDATED"
     PROPERTY_DELETED = "PROPERTY_DELETED"
@@ -68,6 +117,7 @@ class PropertySort(StrEnum):
 class MediaType(StrEnum):
     IMAGE = "IMAGE"
     VIDEO = "VIDEO"
+    DOCUMENT = "DOCUMENT"
 
 
 class TokenType(StrEnum):
@@ -86,7 +136,8 @@ class TransactionProvider(StrEnum):
 
 
 class TransactionType(StrEnum):
-    AGENT_VERIFICATION = "AGENT_VERIFICATION"
+    AGENT_SUBSCRIPTION = "AGENT_SUBSCRIPTION"
+    AGENT_VERIFICATION = "AGENT_VERIFICATION"  # Legacy compatibility.
 
 
 class TransactionStatus(StrEnum):

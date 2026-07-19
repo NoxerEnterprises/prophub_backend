@@ -28,6 +28,10 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
+    @app.get("/", tags=["Health"])
+    async def root() -> dict:
+        return {"success": True, "message": "API is running", "data": {"status": "ok", "docs": "/docs"}}
+
     @app.get("/health", tags=["Health"])
     async def root_health() -> dict:
         return {"success": True, "message": "API is running", "data": {"status": "ok"}}

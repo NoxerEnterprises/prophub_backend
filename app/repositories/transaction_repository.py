@@ -20,27 +20,20 @@ class TransactionRepository:
         return transaction
 
     async def get_by_reference(self, reference: str) -> Transaction | None:
-        statement = (
-            select(Transaction)
-            .where(Transaction.reference == reference)
-            .options(selectinload(Transaction.agent), selectinload(Transaction.user))
-        )
-        result = await self.session.execute(statement)
+        result = await self.session.execute(select(Transaction).where(Transaction.reference == reference).options(selectinload(Transaction.agent), selectinload(Transaction.user)))
         return result.scalar_one_or_none()
 
-    async def get_pending_agent_verification(self, agent_id: uuid.UUID) -> Transaction | None:
-        statement = (
+    async def get_pending_agent_subscription(self, agent_id: uuid.UUID) -> Transaction | None:
+        result = await self.session.execute(
             select(Transaction)
-            .where(
-                Transaction.agent_id == agent_id,
-                Transaction.payment_type == TransactionType.AGENT_VERIFICATION.value,
-                Transaction.status == TransactionStatus.PENDING.value,
-            )
+            .where(Transaction.agent_id == agent_id, Transaction.payment_type == TransactionType.AGENT_SUBSCRIPTION.value, Transaction.status == TransactionStatus.PENDING.value)
             .order_by(Transaction.created_at.desc())
             .limit(1)
         )
-        result = await self.session.execute(statement)
         return result.scalar_one_or_none()
+
+    async def get_pending_agent_verification(self, agent_id: uuid.UUID) -> Transaction | None:
+        return await self.get_pending_agent_subscription(agent_id)
 
     async def list_by_user(self, *, user_id: uuid.UUID, page: int = 1, limit: int = 20) -> tuple[list[Transaction], int]:
         base = select(Transaction).where(Transaction.user_id == user_id)
@@ -55,10 +48,5 @@ class TransactionRepository:
             base = base.where(Transaction.status == status)
         count = await self.session.execute(select(func.count()).select_from(base.subquery()))
         total = int(count.scalar_one() or 0)
-        result = await self.session.execute(
-            base.options(selectinload(Transaction.agent), selectinload(Transaction.user))
-            .order_by(Transaction.created_at.desc())
-            .offset((page - 1) * limit)
-            .limit(limit)
-        )
+        result = await self.session.execute(base.options(selectinload(Transaction.agent), selectinload(Transaction.user)).order_by(Transaction.created_at.desc()).offset((page - 1) * limit).limit(limit))
         return list(result.scalars().unique().all()), total

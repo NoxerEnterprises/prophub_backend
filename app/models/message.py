@@ -27,6 +27,7 @@ class Message(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     media_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     media_size_bytes: Mapped[int | None] = mapped_column(nullable=True)
+    client_message_id: Mapped[str | None] = mapped_column(String(120), index=True, nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
 

@@ -17,6 +17,7 @@ class PaymentInitializeResponse(BaseModel):
     reference: str
     amount: Decimal
     currency: str
+    subscription_duration_months: int
     authorization_url: str
     access_code: str | None = None
     public_key: str | None = None
@@ -36,6 +37,9 @@ class TransactionResponse(BaseModel):
     status: TransactionStatus | str
     authorization_url: str | None = None
     access_code: str | None = None
+    subscription_duration_months: int | None = None
+    subscription_period_start: datetime | None = None
+    subscription_period_end: datetime | None = None
     paid_at: datetime | None = None
     verified_at: datetime | None = None
     failure_reason: str | None = None
@@ -46,6 +50,8 @@ class TransactionResponse(BaseModel):
 class PaymentVerifyResponse(BaseModel):
     transaction: TransactionResponse
     agent_status: str
+    subscription_status: str | None = None
+    subscription_expires_at: datetime | None = None
 
 
 class AdminTransactionFilter(BaseModel):

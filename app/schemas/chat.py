@@ -5,19 +5,26 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.core.enums import ChatParticipantRole, ChatType, MessageType
+from app.core.enums import ChatParticipantRole, ChatType, MessageType, VisibleContactType
 from app.schemas.user import UserPublic
 
 
 class ChatCreateRequest(BaseModel):
-    agent_id: UUID
+    agent_id: UUID | None = None
     property_id: UUID | None = None
     initial_message: str | None = Field(default=None, min_length=1, max_length=5000)
+
+    @model_validator(mode="after")
+    def require_target(self) -> "ChatCreateRequest":
+        if not self.agent_id and not self.property_id:
+            raise ValueError("Either agent_id or property_id is required")
+        return self
 
 
 class MessageCreateRequest(BaseModel):
     content: str = Field(min_length=1, max_length=5000)
     message_type: MessageType = MessageType.TEXT
+    client_message_id: str | None = Field(default=None, max_length=120)
 
     @model_validator(mode="after")
     def validate_text_message(self) -> "MessageCreateRequest":
@@ -51,6 +58,7 @@ class MessageResponse(BaseModel):
     media_path: str | None = None
     media_content_type: str | None = None
     media_size_bytes: int | None = None
+    client_message_id: str | None = None
     read_at: datetime | None = None
     deleted_at: datetime | None = None
     created_at: datetime
@@ -74,6 +82,10 @@ class ChatResponse(BaseModel):
     chat_type: ChatType | str
     property_id: UUID | None = None
     created_by_id: UUID
+    target_user_id: UUID | None = None
+    underlying_agent_id: UUID | None = None
+    routed_through_noxer: bool = False
+    visible_contact_type: VisibleContactType | str = VisibleContactType.AGENT
     title: str | None = None
     last_message_id: UUID | None = None
     last_message_at: datetime | None = None
@@ -83,16 +95,7 @@ class ChatResponse(BaseModel):
     property: PropertyChatSummary | None = None
 
 
-class ChatListItem(BaseModel):
-    id: UUID
-    chat_type: ChatType | str
-    property_id: UUID | None = None
-    title: str | None = None
-    last_message_at: datetime | None = None
-    created_at: datetime
-    updated_at: datetime
-    participants: list[ChatParticipantResponse] = []
-    property: PropertyChatSummary | None = None
+class ChatListItem(ChatResponse):
     last_message: MessageResponse | None = None
     unread_count: int = 0
 

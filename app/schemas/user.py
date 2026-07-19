@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import EmailStr, Field, field_validator
 
-from app.core.enums import UserRole
+from app.core.enums import UserRole, UserType
 from app.schemas.common import ORMModel
 
 
@@ -12,15 +12,21 @@ class UserPublic(ORMModel):
     email: EmailStr
     phone: str | None = None
     full_name: str
-    role: UserRole
+    role: UserRole | str
+    user_type: UserType | str = UserType.CUSTOMER
     is_active: bool
     is_email_verified: bool
+    email_verified_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
 
 class CurrentUserResponse(UserPublic):
     agent_status: str | None = None
+    agent_operating_mode: str | None = None
+    subscription_status: str | None = None
+    subscription_expires_at: datetime | None = None
+    email_verification_required: bool = False
     is_super_admin: bool = False
 
 

@@ -3,8 +3,8 @@ import sys
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import UserRole
-from app.core.security import hash_password
+from app.core.enums import UserRole, UserType
+from app.core.security import hash_password, now_utc
 from app.db.session import AsyncSessionLocal
 from app.models.admin_profile import AdminProfile
 from app.models.user import User
@@ -27,6 +27,8 @@ async def create_super_admin(email: str, full_name: str, password: str) -> None:
             else:
                 profile.is_super_admin = True
                 profile.title = profile.title or "Super Admin"
+            existing.is_email_verified = True
+            existing.email_verified_at = existing.email_verified_at or now_utc()
             await session.commit()
             print(f"Updated existing user as super admin: {normalized_email}")
             return
@@ -36,8 +38,10 @@ async def create_super_admin(email: str, full_name: str, password: str) -> None:
             full_name=full_name.strip(),
             hashed_password=hash_password(password),
             role=UserRole.SUPER_ADMIN.value,
+            user_type=UserType.CUSTOMER.value,
             is_active=True,
             is_email_verified=True,
+            email_verified_at=now_utc(),
         )
         await users.add(user)
         await admins.add_profile(AdminProfile(user_id=user.id, title="Super Admin", is_super_admin=True, permissions={"*": True}))

@@ -17,7 +17,44 @@ class TokenPair(ORMModel):
 
 class AuthResponse(ORMModel):
     user: UserPublic
-    tokens: TokenPair
+    tokens: TokenPair | None = None
+    email_verification_required: bool = False
+    is_email_verified: bool = False
+    debug_verification_token: str | None = None
+    debug_otp_code: str | None = None
+
+
+class EmailVerificationRequest(ORMModel):
+    email: EmailStr
+    verification_token: str | None = Field(default=None, min_length=20)
+    otp_code: str = Field(min_length=4, max_length=10)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).lower().strip()
+
+
+class EmailVerificationResponse(ORMModel):
+    verified: bool
+    user: UserPublic
+    tokens: TokenPair | None = None
+
+
+class ResendEmailVerificationRequest(ORMModel):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).lower().strip()
+
+
+class ResendEmailVerificationResponse(ORMModel):
+    email_verification_required: bool = True
+    email: EmailStr
+    debug_verification_token: str | None = None
+    debug_otp_code: str | None = None
 
 
 class RefreshTokenRequest(ORMModel):

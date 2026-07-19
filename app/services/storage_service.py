@@ -26,46 +26,43 @@ class SupabaseStorageService:
     allowed_image_extensions = {".jpg", ".jpeg", ".png", ".webp"}
     allowed_video_content_types = {"video/mp4", "video/webm", "video/quicktime"}
     allowed_video_extensions = {".mp4", ".webm", ".mov"}
-    max_image_size_bytes = 5 * 1024 * 1024
+    allowed_document_content_types = {"application/pdf", "image/jpeg", "image/png", "image/webp"}
+    allowed_document_extensions = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
 
     def __init__(self) -> None:
         if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
             raise BadRequestError("Supabase storage credentials are not configured")
         self.base_url = settings.SUPABASE_URL.rstrip("/")
         self.bucket = settings.SUPABASE_STORAGE_BUCKET
-        self.headers = {
-            "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
-            "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
-        }
+        self.headers = {"apikey": settings.SUPABASE_SERVICE_ROLE_KEY, "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}"}
 
     async def upload_public_image(self, *, file: UploadFile, path: str) -> UploadedStorageObject:
-        return await self.upload_public_media(
-            file=file,
-            path=path,
-            allowed_media_types={MediaType.IMAGE},
-            max_image_size_bytes=self.max_image_size_bytes,
-        )
+        return await self.upload_public_media(file=file, path=path, allowed_media_types={MediaType.IMAGE}, max_image_size_bytes=settings.MAX_PROPERTY_IMAGE_SIZE_MB * 1024 * 1024)
 
-    async def upload_public_media(
-        self,
-        *,
-        file: UploadFile,
-        path: str,
-        allowed_media_types: set[MediaType] | None = None,
-        max_image_size_bytes: int | None = None,
-        max_video_size_bytes: int | None = None,
-    ) -> UploadedStorageObject:
+    async def upload_document(self, *, file: UploadFile, path: str) -> UploadedStorageObject:
+        content_type = file.content_type or ""
+        extension = Path(file.filename or "").suffix.lower()
+        if content_type not in self.allowed_document_content_types or extension not in self.allowed_document_extensions:
+            raise BadRequestError("Documents must be PDF, JPEG, PNG, or WEBP")
+        file_bytes = await file.read()
+        size = len(file_bytes)
+        if size == 0:
+            raise BadRequestError("Uploaded document is empty")
+        max_size = settings.MAX_DOCUMENT_SIZE_MB * 1024 * 1024
+        if size > max_size:
+            raise BadRequestError(f"Document size must not exceed {settings.MAX_DOCUMENT_SIZE_MB} MB")
+        await self._upload_bytes(path=path, content=file_bytes, content_type=content_type)
+        return UploadedStorageObject(path=path, public_url=self.get_public_url(path), content_type=content_type, size_bytes=size, media_type=MediaType.DOCUMENT)
+
+    async def upload_public_media(self, *, file: UploadFile, path: str, allowed_media_types: set[MediaType] | None = None, max_image_size_bytes: int | None = None, max_video_size_bytes: int | None = None) -> UploadedStorageObject:
         allowed_media_types = allowed_media_types or {MediaType.IMAGE, MediaType.VIDEO}
-        max_image_size_bytes = max_image_size_bytes or self.max_image_size_bytes
+        max_image_size_bytes = max_image_size_bytes or settings.MAX_CHAT_IMAGE_SIZE_MB * 1024 * 1024
         max_video_size_bytes = max_video_size_bytes or settings.MAX_CHAT_VIDEO_SIZE_MB * 1024 * 1024
-
         content_type = file.content_type or ""
         extension = Path(file.filename or "").suffix.lower()
         media_type = self._detect_media_type(content_type=content_type, extension=extension)
-
         if media_type not in allowed_media_types:
             raise BadRequestError("Unsupported media type for this upload endpoint")
-
         file_bytes = await file.read()
         size = len(file_bytes)
         if size == 0:
@@ -74,36 +71,23 @@ class SupabaseStorageService:
             raise BadRequestError(f"Image size must not exceed {max_image_size_bytes // (1024 * 1024)} MB")
         if media_type == MediaType.VIDEO and size > max_video_size_bytes:
             raise BadRequestError(f"Video size must not exceed {max_video_size_bytes // (1024 * 1024)} MB")
+        await self._upload_bytes(path=path, content=file_bytes, content_type=content_type)
+        return UploadedStorageObject(path=path, public_url=self.get_public_url(path), content_type=content_type, size_bytes=size, media_type=media_type)
 
+    async def _upload_bytes(self, *, path: str, content: bytes, content_type: str) -> None:
         encoded_path = self._encode_path(path)
         url = f"{self.base_url}/storage/v1/object/{self.bucket}/{encoded_path}"
-        headers = {
-            **self.headers,
-            "Content-Type": content_type,
-            "Cache-Control": "3600",
-            "x-upsert": "false",
-        }
-
+        headers = {**self.headers, "Content-Type": content_type, "Cache-Control": "3600", "x-upsert": "false"}
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(url, headers=headers, content=file_bytes)
-
+            response = await client.post(url, headers=headers, content=content)
         if response.status_code not in {200, 201}:
             raise BadRequestError("Supabase Storage upload failed", details=response.text)
-
-        return UploadedStorageObject(
-            path=path,
-            public_url=self.get_public_url(path),
-            content_type=content_type,
-            size_bytes=size,
-            media_type=media_type,
-        )
 
     async def delete_object(self, path: str) -> None:
         encoded_path = self._encode_path(path)
         url = f"{self.base_url}/storage/v1/object/{self.bucket}/{encoded_path}"
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.delete(url, headers=self.headers)
-
         if response.status_code not in {200, 204, 404}:
             raise BadRequestError("Supabase Storage delete failed", details=response.text)
 
