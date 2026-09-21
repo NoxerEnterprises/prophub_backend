@@ -319,3 +319,7 @@ New endpoint groups:
 /api/v1/ws/chats/{chat_id}
 /api/v1/admin/transactions
 ```
+
+## v0.8 — Agent Access & Geographic Group Chat
+
+The latest upgrade adds admin-granted agent access, access revocation, agent step-down, and location-based multi-agent group chats with existing-listing sharing. Apply `alembic upgrade head` after deployment. See `docs/DEPLOYMENT_INSTRUCTIONS_V0_8.md` and `docs/AGENT_ACCESS_AND_GROUP_CHAT_API.md`.

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
 
     PROJECT_NAME: str = "ProHub Backend API"
-    APP_VERSION: str = "0.7.0"
+    APP_VERSION: str = "0.8.0"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     API_V1_PREFIX: str = "/api/v1"

@@ -79,3 +79,16 @@ class AgentStatusChangeRequest(ORMModel):
 class AgentApproveRequest(AgentStatusChangeRequest):
     allow_override: bool = False
     allow_unpaid_override: bool = False  # legacy alias accepted by existing mobile/admin tools
+
+
+class AgentAccessGrantRequest(ORMModel):
+    note: str | None = Field(default=None, max_length=1000)
+    duration_months: int = Field(default=12, ge=1, le=12)
+
+
+class AgentAccessRevokeRequest(ORMModel):
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class AgentStepDownRequest(ORMModel):
+    note: str | None = Field(default=None, max_length=1000)

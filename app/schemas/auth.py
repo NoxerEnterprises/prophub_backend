@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import EmailStr, Field, field_validator
+from pydantic import AliasChoices, EmailStr, Field, field_validator
 
 from app.core.enums import UserRole
 from app.schemas.common import ORMModel
@@ -27,7 +27,7 @@ class AuthResponse(ORMModel):
 class EmailVerificationRequest(ORMModel):
     email: EmailStr
     verification_token: str | None = Field(default=None, min_length=20)
-    otp_code: str = Field(min_length=4, max_length=10)
+    otp_code: str = Field(min_length=4, max_length=10, validation_alias=AliasChoices("otp_code", "otp", "code"))
 
     @field_validator("email")
     @classmethod
@@ -82,7 +82,7 @@ class PasswordResetRequestResponse(ORMModel):
 
 class PasswordResetVerifyRequest(ORMModel):
     reset_token: str = Field(min_length=20)
-    otp_code: str = Field(min_length=4, max_length=10)
+    otp_code: str = Field(min_length=4, max_length=10, validation_alias=AliasChoices("otp_code", "otp", "code"))
 
 
 class PasswordResetVerifyResponse(ORMModel):
@@ -91,7 +91,7 @@ class PasswordResetVerifyResponse(ORMModel):
 
 class PasswordResetConfirmRequest(ORMModel):
     reset_token: str = Field(min_length=20)
-    otp_code: str = Field(min_length=4, max_length=10)
+    otp_code: str = Field(min_length=4, max_length=10, validation_alias=AliasChoices("otp_code", "otp", "code"))
     new_password: str = Field(min_length=8, max_length=128)
 
 

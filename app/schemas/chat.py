@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -21,6 +22,15 @@ class ChatCreateRequest(BaseModel):
         return self
 
 
+class GroupChatCreateRequest(BaseModel):
+    title: str = Field(min_length=3, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
+    country: str = Field(default="Nigeria", min_length=2, max_length=100)
+    state: str = Field(min_length=2, max_length=100)
+    local_government: str | None = Field(default=None, max_length=120)
+    community: str | None = Field(default=None, max_length=160)
+
+
 class MessageCreateRequest(BaseModel):
     content: str = Field(min_length=1, max_length=5000)
     message_type: MessageType = MessageType.TEXT
@@ -29,8 +39,14 @@ class MessageCreateRequest(BaseModel):
     @model_validator(mode="after")
     def validate_text_message(self) -> "MessageCreateRequest":
         if self.message_type != MessageType.TEXT:
-            raise ValueError("Use the media upload endpoint for IMAGE or VIDEO messages")
+            raise ValueError("Use the media or listing endpoint for non-text messages")
         return self
+
+
+class ListingShareRequest(BaseModel):
+    property_id: UUID
+    caption: str | None = Field(default=None, max_length=5000)
+    client_message_id: str | None = Field(default=None, max_length=120)
 
 
 class ChatParticipantResponse(BaseModel):
@@ -46,6 +62,19 @@ class ChatParticipantResponse(BaseModel):
     user: UserPublic | None = None
 
 
+class PropertyChatSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    title: str
+    price: Decimal | None = None
+    currency: str | None = None
+    state: str
+    local_government: str | None = None
+    community: str | None = None
+    listing_type: str | None = None
+
+
 class MessageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -59,20 +88,13 @@ class MessageResponse(BaseModel):
     media_content_type: str | None = None
     media_size_bytes: int | None = None
     client_message_id: str | None = None
+    shared_property_id: UUID | None = None
+    shared_property: PropertyChatSummary | None = None
     read_at: datetime | None = None
     deleted_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     sender: UserPublic | None = None
-
-
-class PropertyChatSummary(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    title: str
-    state: str
-    community: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -87,17 +109,28 @@ class ChatResponse(BaseModel):
     routed_through_noxer: bool = False
     visible_contact_type: VisibleContactType | str = VisibleContactType.AGENT
     title: str | None = None
+    description: str | None = None
+    country: str | None = None
+    state: str | None = None
+    local_government: str | None = None
+    community: str | None = None
+    is_active: bool = True
     last_message_id: UUID | None = None
     last_message_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    participants: list[ChatParticipantResponse] = []
+    participants: list[ChatParticipantResponse] = Field(default_factory=list)
     property: PropertyChatSummary | None = None
 
 
 class ChatListItem(ChatResponse):
     last_message: MessageResponse | None = None
     unread_count: int = 0
+
+
+class GroupChatListItem(ChatResponse):
+    participant_count: int = 0
+    is_member: bool = False
 
 
 class ChatReadResponse(BaseModel):

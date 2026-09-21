@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -34,6 +34,12 @@ class Chat(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     routed_through_noxer: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     visible_contact_type: Mapped[str] = mapped_column(String(32), default=VisibleContactType.AGENT.value, nullable=False)
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    country: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)
+    state: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)
+    local_government: Mapped[str | None] = mapped_column(String(120), index=True, nullable=True)
+    community: Mapped[str | None] = mapped_column(String(160), index=True, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True, nullable=False)
     last_message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
 

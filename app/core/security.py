@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import hashlib
 import secrets
 import uuid
@@ -18,6 +19,18 @@ _password_hasher = PasswordHasher()
 
 def now_utc() -> datetime:
     return datetime.now(UTC)
+
+
+
+def add_months(value: datetime, months: int) -> datetime:
+    """Add calendar months while preserving timezone and clamping the day safely."""
+    if months < 0:
+        raise ValueError("months must be non-negative")
+    month_index = (value.month - 1) + months
+    year = value.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(value.day, calendar.monthrange(year, month)[1])
+    return value.replace(year=year, month=month, day=day)
 
 
 def hash_password(password: str) -> str:

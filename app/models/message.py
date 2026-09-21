@@ -13,6 +13,7 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.chat import Chat
+    from app.models.property import Property
     from app.models.user import User
 
 
@@ -28,8 +29,10 @@ class Message(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     media_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     media_size_bytes: Mapped[int | None] = mapped_column(nullable=True)
     client_message_id: Mapped[str | None] = mapped_column(String(120), index=True, nullable=True)
+    shared_property_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("properties.id", ondelete="SET NULL"), index=True, nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
 
     chat: Mapped[Chat] = relationship("Chat", back_populates="messages", lazy="selectin")
     sender: Mapped[User] = relationship("User", lazy="selectin")
+    shared_property: Mapped[Property | None] = relationship("Property", lazy="selectin")

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import Select
 
-from app.core.enums import AgentStatus, ListingType, PropertyCategory, PropertySort, PropertyStatus
+from app.core.enums import AgentStatus, ListingType, PropertyCategory, PropertySort, PropertyStatus, SubscriptionStatus
 from app.models.agent_profile import AgentProfile
 from app.models.property import Property
 from app.models.property_media import PropertyMedia
@@ -62,6 +62,9 @@ class PropertyRepository:
                 Property.is_published.is_(True),
                 Property.status != PropertyStatus.HIDDEN.value,
                 AgentProfile.status == AgentStatus.APPROVED.value,
+                AgentProfile.subscription_status.in_([SubscriptionStatus.ACTIVE.value, SubscriptionStatus.ADMIN_GRANTED.value]),
+                AgentProfile.subscription_expires_at.is_not(None),
+                AgentProfile.subscription_expires_at > func.now(),
             )
             .options(
                 selectinload(Property.agent),
@@ -105,6 +108,9 @@ class PropertyRepository:
             Property.is_published.is_(True),
             Property.status != PropertyStatus.HIDDEN.value,
             AgentProfile.status == AgentStatus.APPROVED.value,
+            AgentProfile.subscription_status.in_([SubscriptionStatus.ACTIVE.value, SubscriptionStatus.ADMIN_GRANTED.value]),
+            AgentProfile.subscription_expires_at.is_not(None),
+            AgentProfile.subscription_expires_at > func.now(),
         ]
         base_statement = select(Property).join(Property.agent)
         base_statement = self._apply_property_filters(

@@ -11,7 +11,7 @@ from app.core.enums import AgentStatus, DocumentStatus, DocumentType, ListingTyp
 from app.models.user import User
 from app.repositories.admin_repository import AdminRepository
 from app.schemas.admin import AdminActivityLogResponse, AdminCreateRequest, AdminProfileResponse, AdminUpdateRequest
-from app.schemas.agent import AgentAdminResponse, AgentApproveRequest, AgentStatusChangeRequest
+from app.schemas.agent import AgentAccessGrantRequest, AgentAccessRevokeRequest, AgentAdminResponse, AgentApproveRequest, AgentStatusChangeRequest, AgentStepDownRequest
 from app.schemas.common import APIResponse, PaginatedResponse, PaginationMeta
 from app.schemas.document import AdminDocumentResponse, DocumentRejectRequest, DocumentReviewRequest
 from app.schemas.payment import TransactionResponse
@@ -21,6 +21,7 @@ from app.services.agent_service import AgentService
 from app.services.document_service import DocumentService
 from app.services.payment_service import PaymentService
 from app.services.property_service import PropertyService
+from app.services.websocket_manager import websocket_manager
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 AdminDep = Annotated[User, Depends(require_admin)]
@@ -81,6 +82,46 @@ async def approve_agent(agent_id: UUID, payload: AgentApproveRequest, session: S
     return APIResponse(message="Agent approved", data=AgentAdminResponse.model_validate(agent))
 
 
+@router.patch("/agents/{agent_id}/grant-access", response_model=APIResponse[AgentAdminResponse])
+async def grant_agent_access(
+    agent_id: UUID,
+    payload: AgentAccessGrantRequest,
+    session: SessionDep,
+    admin: AdminDep,
+) -> APIResponse[AgentAdminResponse]:
+    agent = await AgentService(session).grant_access(
+        agent_id=agent_id,
+        admin=admin,
+        duration_months=payload.duration_months,
+        note=payload.note,
+    )
+    return APIResponse(message="Agent access granted", data=AgentAdminResponse.model_validate(agent))
+
+
+@router.patch("/agents/{agent_id}/revoke-access", response_model=APIResponse[AgentAdminResponse])
+async def revoke_agent_access(
+    agent_id: UUID,
+    payload: AgentAccessRevokeRequest,
+    session: SessionDep,
+    admin: AdminDep,
+) -> APIResponse[AgentAdminResponse]:
+    agent = await AgentService(session).revoke_access(agent_id=agent_id, admin=admin, note=payload.note)
+    await websocket_manager.disconnect_user(user_id=agent.user_id)
+    return APIResponse(message="Agent access revoked", data=AgentAdminResponse.model_validate(agent))
+
+
+@router.patch("/agents/{agent_id}/step-down", response_model=APIResponse[AgentAdminResponse])
+async def step_down_agent(
+    agent_id: UUID,
+    payload: AgentStepDownRequest,
+    session: SessionDep,
+    admin: AdminDep,
+) -> APIResponse[AgentAdminResponse]:
+    agent = await AgentService(session).step_down_agent(agent_id=agent_id, admin=admin, note=payload.note)
+    await websocket_manager.disconnect_user(user_id=agent.user_id)
+    return APIResponse(message="Agent stepped down and access revoked", data=AgentAdminResponse.model_validate(agent))
+
+
 @router.patch("/agents/{agent_id}/reject", response_model=APIResponse[AgentAdminResponse])
 async def reject_agent(agent_id: UUID, payload: AgentStatusChangeRequest, session: SessionDep, admin: AdminDep) -> APIResponse[AgentAdminResponse]:
     agent = await AgentService(session).reject_agent(agent_id=agent_id, admin=admin, note=payload.note)
@@ -90,6 +131,7 @@ async def reject_agent(agent_id: UUID, payload: AgentStatusChangeRequest, sessio
 @router.patch("/agents/{agent_id}/disable", response_model=APIResponse[AgentAdminResponse])
 async def disable_agent(agent_id: UUID, payload: AgentStatusChangeRequest, session: SessionDep, admin: AdminDep) -> APIResponse[AgentAdminResponse]:
     agent = await AgentService(session).disable_agent(agent_id=agent_id, admin=admin, note=payload.note)
+    await websocket_manager.disconnect_user(user_id=agent.user_id)
     return APIResponse(message="Agent disabled", data=AgentAdminResponse.model_validate(agent))
 
 

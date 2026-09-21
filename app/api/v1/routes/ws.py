@@ -5,12 +5,13 @@ import uuid
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.enums import TokenType
+from app.core.exceptions import AppException
 from app.core.security import decode_jwt_token
 from app.db.session import AsyncSessionLocal
 from app.repositories.user_repository import UserRepository
+from app.schemas.chat import MessageResponse
 from app.services.chat_service import ChatService
 from app.services.websocket_manager import websocket_manager
-from app.schemas.chat import MessageResponse
 
 router = APIRouter(prefix="/ws", tags=["WebSocket"])
 
@@ -27,8 +28,11 @@ async def chat_websocket(websocket: WebSocket, chat_id: uuid.UUID, token: str):
                 await websocket.close(code=4401)
                 return
             await ChatService(session).get_chat_for_user(chat_id=chat_id, current_user=user)
-        await websocket_manager.connect(chat_id=chat_id, websocket=websocket)
-        await websocket.send_json({"type": "connection.ready", "data": {"chat_id": str(chat_id), "user_id": str(user_id)}})
+
+        await websocket_manager.connect(chat_id=chat_id, user_id=user_id, websocket=websocket)
+        await websocket.send_json(
+            {"type": "connection.ready", "data": {"chat_id": str(chat_id), "user_id": str(user_id)}}
+        )
         try:
             while True:
                 payload = await websocket.receive_json()
@@ -41,22 +45,64 @@ async def chat_websocket(websocket: WebSocket, chat_id: uuid.UUID, token: str):
                     client_message_id = data.get("client_message_id")
                     async with AsyncSessionLocal() as session:
                         user = await UserRepository(session).get_by_id(user_id)
-                        message = await ChatService(session).send_text_message(chat_id=chat_id, current_user=user, content=content, client_message_id=client_message_id)
+                        if not user or not user.is_active:
+                            await websocket.close(code=4401)
+                            return
+                        message = await ChatService(session).send_text_message(
+                            chat_id=chat_id,
+                            current_user=user,
+                            content=content,
+                            client_message_id=client_message_id,
+                        )
                         response = MessageResponse.model_validate(message).model_dump(mode="json")
-                    await websocket_manager.broadcast(chat_id=chat_id, payload={"type": "message.created", "data": response})
+                    await websocket_manager.broadcast(
+                        chat_id=chat_id,
+                        payload={"type": "message.created", "data": response},
+                    )
                 elif event_type == "chat.read":
                     async with AsyncSessionLocal() as session:
                         user = await UserRepository(session).get_by_id(user_id)
-                        read_at = await ChatService(session).mark_chat_read(chat_id=chat_id, current_user=user)
-                    await websocket_manager.broadcast(chat_id=chat_id, payload={"type": "chat.read", "data": {"chat_id": str(chat_id), "user_id": str(user_id), "last_read_at": read_at.isoformat()}})
+                        if not user or not user.is_active:
+                            await websocket.close(code=4401)
+                            return
+                        read_at = await ChatService(session).mark_chat_read(
+                            chat_id=chat_id,
+                            current_user=user,
+                        )
+                    await websocket_manager.broadcast(
+                        chat_id=chat_id,
+                        payload={
+                            "type": "chat.read",
+                            "data": {
+                                "chat_id": str(chat_id),
+                                "user_id": str(user_id),
+                                "last_read_at": read_at.isoformat(),
+                            },
+                        },
+                    )
                 else:
-                    await websocket.send_json({"type": "error", "data": {"message": "Unsupported event type"}})
+                    await websocket.send_json(
+                        {"type": "error", "data": {"message": "Unsupported event type"}}
+                    )
         except WebSocketDisconnect:
-            websocket_manager.disconnect(chat_id=chat_id, websocket=websocket)
-    except Exception as exc:
+            pass
+    except AppException as exc:
         try:
-            await websocket.send_json({"type": "error", "data": {"message": str(exc)}})
+            detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
+            await websocket.send_json({"type": "error", "data": {"message": detail.get("message", "Request denied")}})
+            await websocket.close(code=4403 if exc.status_code == 403 else 4400)
+        except Exception:
+            pass
+    except (ValueError, TypeError):
+        try:
+            await websocket.close(code=4401)
+        except Exception:
+            pass
+    except Exception:
+        try:
+            await websocket.send_json({"type": "error", "data": {"message": "WebSocket error"}})
             await websocket.close(code=1011)
         except Exception:
             pass
+    finally:
         websocket_manager.disconnect(chat_id=chat_id, websocket=websocket)

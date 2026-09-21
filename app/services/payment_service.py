@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -10,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.enums import AgentStatus, AdminAction, DocumentType, SubscriptionStatus, TransactionProvider, TransactionStatus, TransactionType, UserRole
 from app.core.exceptions import BadRequestError, ForbiddenError, NotFoundError
-from app.core.security import now_utc
+from app.core.security import add_months, now_utc
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.repositories.document_repository import DocumentRepository
@@ -40,8 +39,8 @@ class PaymentService:
         nin = await self.documents.get_agent_document(agent_profile_id=agent.id, document_type=DocumentType.NIN.value)
         if not nin:
             raise BadRequestError("NIN document is required before subscription payment")
-        if await AgentService(self.session).is_agent_subscription_active(agent):
-            raise BadRequestError("Agent already has an active subscription")
+        if await AgentService(self.session).has_active_agent_access(agent):
+            raise BadRequestError("Agent already has active paid or admin-granted access")
         existing = await self.transactions.get_pending_agent_subscription(agent.id)
         if existing and existing.authorization_url:
             return existing
@@ -103,7 +102,7 @@ class PaymentService:
         if provider_status == "success" and int(amount_minor or 0) == expected_minor and currency == transaction.currency.upper():
             now = now_utc()
             duration = transaction.subscription_duration_months or settings.SUBSCRIPTION_DURATION_MONTHS
-            period_end = now + timedelta(days=duration * 30)
+            period_end = add_months(now, duration)
             transaction.status = TransactionStatus.SUCCESS.value
             transaction.paid_at = now
             transaction.verified_at = now
