@@ -10,6 +10,7 @@ from app.core.security import hash_password
 from app.models.admin_profile import AdminProfile
 from app.models.user import User
 from app.repositories.admin_repository import AdminRepository
+from app.db.refresh import refresh_for_response
 from app.repositories.user_repository import UserRepository
 from app.schemas.admin import AdminCreateRequest, AdminUpdateRequest
 from app.services.admin_activity_service import AdminActivityService
@@ -53,7 +54,7 @@ class AdminService:
             metadata={"email": user.email, "is_super_admin": payload.is_super_admin},
         )
         await self.session.commit()
-        await self.session.refresh(profile, attribute_names=["user"])
+        await refresh_for_response(self.session, profile, relationships=("user",))
         return profile
 
     async def list_admins(self, *, page: int, limit: int):
@@ -87,7 +88,7 @@ class AdminService:
             metadata=update,
         )
         await self.session.commit()
-        await self.session.refresh(profile, attribute_names=["user"])
+        await refresh_for_response(self.session, profile, relationships=("user",))
         return profile
 
     async def set_admin_active(self, *, actor: User, admin_id: UUID, is_active: bool) -> AdminProfile:
@@ -106,5 +107,5 @@ class AdminService:
             metadata={"is_active": is_active},
         )
         await self.session.commit()
-        await self.session.refresh(profile, attribute_names=["user"])
+        await refresh_for_response(self.session, profile, relationships=("user",))
         return profile

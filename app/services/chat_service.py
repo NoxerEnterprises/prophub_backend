@@ -28,6 +28,7 @@ from app.models.property import Property
 from app.models.user import User
 from app.repositories.agent_repository import AgentRepository
 from app.repositories.chat_repository import ChatRepository
+from app.db.refresh import refresh_for_response
 from app.repositories.property_repository import PropertyRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.chat import (
@@ -144,7 +145,7 @@ class ChatService:
         if not loaded_chat:
             raise NotFoundError("Chat not found after creation")
         if created_message:
-            await self.session.refresh(created_message, attribute_names=["sender", "shared_property"])
+            await refresh_for_response(self.session, created_message, relationships=("sender", "shared_property"))
         return loaded_chat, created_message
 
     async def create_group_chat(self, *, current_user: User, payload: GroupChatCreateRequest) -> Chat:
@@ -279,7 +280,7 @@ class ChatService:
             shared_property_id=property_obj.id,
         )
         await self.session.commit()
-        await self.session.refresh(message, attribute_names=["sender", "shared_property"])
+        await refresh_for_response(self.session, message, relationships=("sender", "shared_property"))
         return message
 
     @staticmethod
@@ -403,7 +404,7 @@ class ChatService:
             client_message_id=client_message_id,
         )
         await self.session.commit()
-        await self.session.refresh(message, attribute_names=["sender", "shared_property"])
+        await refresh_for_response(self.session, message, relationships=("sender", "shared_property"))
         return message
 
     async def upload_media_message(
@@ -438,7 +439,7 @@ class ChatService:
             client_message_id=client_message_id,
         )
         await self.session.commit()
-        await self.session.refresh(message, attribute_names=["sender", "shared_property"])
+        await refresh_for_response(self.session, message, relationships=("sender", "shared_property"))
         return message
 
     async def mark_chat_read(self, *, chat_id: UUID, current_user: User):

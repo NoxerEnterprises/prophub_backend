@@ -13,6 +13,7 @@ from app.core.security import add_months, now_utc
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.repositories.document_repository import DocumentRepository
+from app.db.refresh import refresh_for_response
 from app.repositories.transaction_repository import TransactionRepository
 from app.services.admin_activity_service import AdminActivityService
 from app.services.agent_service import AgentService
@@ -82,6 +83,7 @@ class PaymentService:
         if event_name != "charge.success":
             transaction.provider_response = event
             await self.session.commit()
+            await refresh_for_response(self.session, transaction, relationships=("agent", "user"))
             return transaction
         return await self._apply_paystack_verification(transaction=transaction, paystack_data=data, full_response=event)
 
@@ -123,7 +125,7 @@ class PaymentService:
             transaction.verified_at = now_utc()
             transaction.failure_reason = f"Paystack status={provider_status}, amount={amount_minor}, currency={currency}"
         await self.session.commit()
-        await self.session.refresh(transaction, attribute_names=["agent", "user"])
+        await refresh_for_response(self.session, transaction, relationships=("agent", "user"))
         return transaction
 
     @staticmethod

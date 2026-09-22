@@ -15,6 +15,7 @@ from app.models.agent_profile import AgentProfile
 from app.models.user import User
 from app.models.user_document import UserDocument
 from app.repositories.document_repository import DocumentRepository
+from app.db.refresh import refresh_for_response
 from app.services.admin_activity_service import AdminActivityService
 from app.services.storage_service import SupabaseStorageService
 
@@ -71,7 +72,7 @@ class DocumentService:
             document.agent_profile.operating_mode = OperatingMode.STANDALONE.value
         await self.activity.log(admin_id=admin.id, action=AdminAction.DOCUMENT_APPROVED.value, target_type="user_document", target_id=document.id, description=note, metadata={"document_type": document.document_type, "user_id": str(document.user_id)})
         await self.session.commit()
-        await self.session.refresh(document, attribute_names=["user", "agent_profile"])
+        await refresh_for_response(self.session, document, relationships=("user", "agent_profile"))
         return document
 
     async def reject_document(self, *, document_id: UUID, admin: User, reason: str) -> UserDocument:
@@ -86,7 +87,7 @@ class DocumentService:
             document.agent_profile.operating_mode = OperatingMode.NOXER_MANAGED.value
         await self.activity.log(admin_id=admin.id, action=AdminAction.DOCUMENT_REJECTED.value, target_type="user_document", target_id=document.id, description=reason, metadata={"document_type": document.document_type, "user_id": str(document.user_id)})
         await self.session.commit()
-        await self.session.refresh(document, attribute_names=["user", "agent_profile"])
+        await refresh_for_response(self.session, document, relationships=("user", "agent_profile"))
         return document
 
     async def has_approved_document(self, *, agent_id: UUID, document_type: DocumentType) -> bool:

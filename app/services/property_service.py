@@ -16,6 +16,7 @@ from app.models.property import Property
 from app.models.property_media import PropertyMedia
 from app.models.user import User
 from app.repositories.property_repository import PropertyRepository
+from app.db.refresh import refresh_for_response
 from app.schemas.property import PropertyCreate, PropertyUpdate
 from app.services.admin_activity_service import AdminActivityService
 from app.services.storage_service import SupabaseStorageService
@@ -48,7 +49,7 @@ class PropertyService:
         )
         await self.properties.add(property_obj)
         await self.session.commit()
-        await self.session.refresh(property_obj, attribute_names=["agent", "media"])
+        await refresh_for_response(self.session, property_obj, relationships=("agent", "media"))
         return property_obj
 
     async def list_public_properties(self, *, page: int = 1, limit: int = 20) -> tuple[list[Property], int]:
@@ -111,7 +112,7 @@ class PropertyService:
                 value = value.value
             setattr(property_obj, field, value)
         await self.session.commit()
-        await self.session.refresh(property_obj, attribute_names=["agent", "media"])
+        await refresh_for_response(self.session, property_obj, relationships=("agent", "media"))
         return property_obj
 
     async def soft_delete_my_property(self, *, property_id: UUID, agent: AgentProfile) -> None:
@@ -216,7 +217,7 @@ class PropertyService:
             note=note or "Property hidden by admin",
         )
         await self.session.commit()
-        await self.session.refresh(property_obj, attribute_names=["agent", "media"])
+        await refresh_for_response(self.session, property_obj, relationships=("agent", "media"))
         return property_obj
 
     async def restore_property_for_admin(
@@ -243,7 +244,7 @@ class PropertyService:
             note=note or "Property restored by admin",
         )
         await self.session.commit()
-        await self.session.refresh(property_obj, attribute_names=["agent", "media"])
+        await refresh_for_response(self.session, property_obj, relationships=("agent", "media"))
         return property_obj
 
     async def soft_delete_property_for_admin(self, *, property_id: UUID, admin: User, note: str | None = None) -> None:

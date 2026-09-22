@@ -23,6 +23,7 @@ from app.models.agent_profile import AgentProfile
 from app.models.user import User
 from app.repositories.agent_repository import AgentRepository
 from app.repositories.document_repository import DocumentRepository
+from app.db.refresh import refresh_for_response
 from app.schemas.agent import AgentProfileUpdate
 from app.services.admin_activity_service import AdminActivityService
 from app.services.document_service import DocumentService
@@ -117,7 +118,7 @@ class AgentService:
                 file=scum_file,
             )
         await self.session.commit()
-        await self.session.refresh(agent, attribute_names=["user", "documents"])
+        await refresh_for_response(self.session, agent, relationships=("user", "documents"))
         return agent
 
     async def get_my_agent_profile(self, user: User) -> AgentProfile:
@@ -138,7 +139,7 @@ class AgentService:
         for field, value in update_data.items():
             setattr(agent, field, str(value) if field == "business_email" and value else value)
         await self.session.commit()
-        await self.session.refresh(agent, attribute_names=["user", "documents"])
+        await refresh_for_response(self.session, agent, relationships=("user", "documents"))
         return agent
 
     async def list_agents(
@@ -274,7 +275,7 @@ class AgentService:
                 metadata={"duration_months": 12, "expires_at": agent.subscription_expires_at.isoformat()},
             )
         await self.session.commit()
-        await self.session.refresh(agent, attribute_names=["user", "documents"])
+        await refresh_for_response(self.session, agent, relationships=("user", "documents"))
         return agent
 
     async def grant_access(
@@ -305,7 +306,7 @@ class AgentService:
             },
         )
         await self.session.commit()
-        await self.session.refresh(agent, attribute_names=["user", "documents"])
+        await refresh_for_response(self.session, agent, relationships=("user", "documents"))
         return agent
 
     def _apply_admin_grant(self, agent: AgentProfile, *, duration_months: int) -> None:
@@ -328,7 +329,7 @@ class AgentService:
             metadata={"old_subscription_status": old_access, "new_subscription_status": agent.subscription_status},
         )
         await self.session.commit()
-        await self.session.refresh(agent, attribute_names=["user", "documents"])
+        await refresh_for_response(self.session, agent, relationships=("user", "documents"))
         return agent
 
     async def step_down_agent(self, *, agent_id: UUID, admin: User, note: str | None = None) -> AgentProfile:
@@ -358,7 +359,7 @@ class AgentService:
             },
         )
         await self.session.commit()
-        await self.session.refresh(agent, attribute_names=["user", "documents"])
+        await refresh_for_response(self.session, agent, relationships=("user", "documents"))
         return agent
 
     async def reject_agent(self, *, agent_id: UUID, admin: User, note: str | None = None) -> AgentProfile:
@@ -380,7 +381,7 @@ class AgentService:
             metadata={"old_status": old_status, "new_status": agent.status},
         )
         await self.session.commit()
-        await self.session.refresh(agent, attribute_names=["user", "documents"])
+        await refresh_for_response(self.session, agent, relationships=("user", "documents"))
         return agent
 
     async def disable_agent(self, *, agent_id: UUID, admin: User, note: str | None = None) -> AgentProfile:
@@ -402,7 +403,7 @@ class AgentService:
             metadata={"old_status": old_status, "new_status": agent.status},
         )
         await self.session.commit()
-        await self.session.refresh(agent, attribute_names=["user", "documents"])
+        await refresh_for_response(self.session, agent, relationships=("user", "documents"))
         return agent
 
     async def enable_agent(self, *, agent_id: UUID, admin: User, note: str | None = None) -> AgentProfile:
@@ -425,5 +426,5 @@ class AgentService:
             metadata={"old_status": old_status, "new_status": agent.status},
         )
         await self.session.commit()
-        await self.session.refresh(agent, attribute_names=["user", "documents"])
+        await refresh_for_response(self.session, agent, relationships=("user", "documents"))
         return agent
